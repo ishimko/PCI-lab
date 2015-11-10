@@ -26,42 +26,37 @@ char *GetDeviceName(int vendorID, int deviceID)
 
 int main(int argc, char **argv)
 {
+	unsigned long commandReg = 0, dataReg = 0;
 	if (iopl(3) )
 	{
 		printf("I/O Privilege level change error\n Try run under ROOT rights\n");
 		return 1;
 	}
 	
-	unsigned short busID, deviceID, functionID;
-	unsigned long command = 0, answer = 0;
+	unsigned short busid, devid;
 	
-	for (busID = 0; busID < 256; busID++)
+	for (busid = 0; busid <= 0xFF; ++busid)
 	{
-		for (deviceID = 0; deviceID < 32; deviceID++)
+		for (devid = 0; devid <= 0xFF; ++devid)
 		{
-			for (functionID = 0; functionID < 8; functionID++)
-			{
-				command = (1 << 31) | (busID << 16) | (deviceID << 11) | (functionID << 8);
-				outl(command, 0x0CF8);
-				answer = inl(0x0CFC);
-
-				unsigned short deviceID = answer >> 16;
-				unsigned short vendorID = answer & 65535;
-				if (answer != 0xffffffff)
-				{
-					printf("%#x.%#x.%#x\n", busID, deviceID, functionID);
-					printf("%s\n", GetVendorName(vendorID));
-					printf("%s\n\n", GetDeviceName(vendorID, deviceID));
-					
-				}
-			}
+			commandReg = (1 << 31) | (busid << 16) | (devid << 11);
+			outl(commandReg, 0x0CF8);
+			dataReg = inl(0x0CFC);
 			
+			unsigned short devid = dataReg >> 16;
+			if (devid != 0xFFFF)
+			{
+				printf("Found something at %x.%x\n", busid, devid);
+				/*
+				unsigned short venid = dataReg & 0xFFFF;
+				printf("VendorID:%x\n\n", venid);
+				*/
+			}
 		}
 	}
 	
 	return 0;
 }
-
 
 
 	
