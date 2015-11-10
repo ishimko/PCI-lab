@@ -1,21 +1,42 @@
+#include <stdio.h>
 #include <sys/io.h>
 #include <errno.h>
 #include "pci.h"
 
+char *GetVendorName(int vendorID)
+{
+	int i;
+	for (i = 0; i < PCI_VENTABLE_LEN; i++)
+		if (PciVenTable[i].VendorId == vendorID)
+			return PciVenTable[i].VendorName;
+	return NULL;	
+}
+
+char *GetDeviceName(int vendorID, int deviceID)
+{
+	int i;
+	for (i = 0; i < PCI_DEVTABLE_LEN; i++)
+		if (PciDevTable[i].VendorId == vendorID && PciDevTable[i].DeviceId == deviceID)
+			return PciDevTable[i].DeviceName;	
+	
+	return NULL;
+}
+
+
 int main()
 {
-	//printf("Peripherial devs lab3\n\n");
-	int i,busid,devid;
 	
 	if(iopl(3)) //задание уровня приоритета
 	{
 		printf("I/O Privilege level change error: %s\nTry running under ROOT user\n",(char *)strerror(errno));
 		return 1;
-	} //granted privileges 3 for port access
-	
-	for (busid=0; busid < 256; busid++)
+	}
+
+	int busID;
+	for (busID = 0; busID < 256; busID++)
 	{
-		for (devid=0; devid < 32; devid++)
+		int deviceID;
+		for (deviceID = 0; deviceID < 32; deviceID++)
 		{
 			int recvp, ven_id, dev_id, clid;
 			int sendp=(1 << 31) | (busid << 16) | (devid << 11);
