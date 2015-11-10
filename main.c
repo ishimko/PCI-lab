@@ -21,7 +21,7 @@ char *GetDeviceName(int vendorID, int deviceID)
 	
 	return NULL;
 }
-//asdasd
+
 
 int main()
 {
