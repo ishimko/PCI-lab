@@ -50,8 +50,19 @@ int main(int argc, char **argv)
 				if (answer != 0xffffffff)
 				{
 					printf("%#x.%#x.%#x\n", busID, deviceID, functionID);
-					printf("%s\n", GetVendorName(vendorID));
-					printf("%s\n\n", GetDeviceName(vendorID, deviceID));
+					
+					char *vendorName = GetVendorName(vendorID);
+					char *deviceName = GetDeviceName(vendorID, deviceID);
+					
+					if (vendorName)
+						printf("%s\n", GetVendorName(vendorID));
+					else
+						puts("Vendor name not found.");
+						
+					if (deviceName)
+						printf("%s\n\n", GetDeviceName(vendorID, deviceID));
+					else
+						puts("Device name not found.");
 					
 				}
 			}
