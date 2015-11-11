@@ -53,11 +53,6 @@ void PrintDeviceMainInfo(ushort deviceID, ushort vendorID)
 	puts(GetDeviceName(vendorID, deviceID));	
 }
 
-ulong GetClassCode(ushort bus, ushort device, ushort function)
-{
-	return GetDataFromRegister(bus, device, function, 0x08) >> 8;
-}
-
 char *GetBaseClassDescription(byte baseClass)
 {
 	int i;
@@ -251,12 +246,19 @@ void ProcessDevice(ushort bus, ushort device, ushort function)
 		printf("%x.%x.%x\n", bus, device, function);
 		PrintDeviceMainInfo(deviceID, vendorID);	
 		
-		byte isBridge = (GetHeaderType(bus, device, function) >> 7) & 1;
+		byte headerType = GetHeaderType(bus, device, function);
+		byte isBridge = headerType & 1;
+		byte hasMultipleFunctions = (headerType >> 7) & 1;
 		
 		if (isBridge)
-			puts("\nBridge\n");
+			puts("\nBridge");
 		else
-			puts("\nNot a bridge\n");
+			puts("\nNot a bridge");
+			
+		if (hasMultipleFunctions)
+			puts("Has multiple functions\n");
+		else
+			puts("Has single function\n");
 		
 		PrintClassCodeInfo(GetDataFromRegister(bus, device, function, CLASS_CODE_REGISTER));
 				
