@@ -102,9 +102,9 @@ char *GetProgrammingInterfaceDescription(byte baseClass, byte subclass, byte pro
 	return NULL;	
 }
 
-void PrintClassCodeInfo(ushort bus, ushort device, ushort function)
+void PrintClassCodeInfo(ulong registerData)
 {	
-	ulong classCode = GetDataFromRegister(bus, device, function, CLASS_CODE_REGISTER) >> 8;
+	ulong classCode = registerData >> 8;
 	byte baseClass = (classCode >> 16) & 255;
 	byte subclass = (classCode >> 8) & 255;
 	byte programmingInterface = classCode & 255;
@@ -180,6 +180,96 @@ void ProcessBARs(ushort bus, ushort device, ushort function)
 	
 }
 
+void PrintExpansionROMInfo(ulong registerInfo)
+{
+	printf("\nExpansion ROM base address: ");
+	if (registerInfo & 1)
+	{
+		puts("can be used");
+		printf("Address: %#x\n\n", registerInfo >> 11);	
+	}
+	else
+		puts("can't be used\n");
+	
+}
+
+void PrintCacheLineSizeInfo(ulong registerInfo)
+{
+	byte cacheLineSize = registerInfo & 255;
+	printf("Cache Line Size: ");
+	if (cacheLineSize % 2)
+		puts("0\n");
+	else
+		printf("%d\n\n", cacheLineSize);	
+}
+
+void PrintIOBaseInfo(ulong registerData)
+{
+	byte IOBase = registerData & 255;
+	printf("I/O Base: %#x\n\n", IOBase);
+}
+
+void PrintIOLimitInfo(ulong registerData)
+{
+	byte IOLimit = (registerData >> 8) & 255;
+	printf("I/O Limit: %#x\n\n", IOLimit);
+}
+
+void PrintMemoryInfo(ulong registerData)
+{
+	ushort memoryBase = registerData && 65535;
+	ushort memoryLimit = registerData >> 16;
+	
+	printf("Memory Base: %#x\n", memoryBase);
+	printf("Memory Limit: %#x\n\n", memoryLimit);
+}
+
+void PrintInterruptPinInfo(ulong registerInfo)
+{
+	printf("Interrupt Pin: ");
+	byte interruptPin = (registerInfo >> 8) & 255;
+	switch (interruptPin)
+	{
+		case 0:
+			puts("not used");
+			break;
+		case 1:
+			puts("INTA#");
+			break;
+		case 2:
+			puts("INTB#");
+			break;
+		case 3:
+			puts("INTC#");
+			break;
+		case 4:
+			puts("INTD#");
+			break;
+		default:
+			break;
+	}
+	puts("");
+}
+
+void PrintInterruptLineInfo(ulong registerInfo)
+{
+	printf("Interrupt Line: ");
+	byte interruptLine = registerInfo & 255;
+	if (interruptLine == 255)
+		puts("unknown or not used\n");
+	else
+		printf("IRQ%u\n\n", interruptLine);	
+}
+
+void PrintBusNumbersInfo(ulong registerInfo)
+{
+	printf("Primary Bus Number: %#x\n", registerInfo & 255);
+	printf("Secondary Bus Number: %#x\n", (registerInfo >> 8) & 255);
+	printf("Subordinate Bus Number: %#x\n\n", (registerInfo >> 16) & 255); 
+	 
+	
+}
+
 void ProcessDevice(ushort bus, ushort device, ushort function)
 {
 	
@@ -195,17 +285,28 @@ void ProcessDevice(ushort bus, ushort device, ushort function)
 		byte isBridge = GetHeaderType(bus, device, function) >> 7;
 		
 		if (isBridge)
-		{
 			puts("\nBridge\n");
-			
+		else
+			puts("\nNot a bridge\n");
+		
+		PrintClassCodeInfo(GetDataFromRegister(bus, device, function, CLASS_CODE_REGISTER));
+				
+		if (isBridge)
+		{
+			PrintBusNumbersInfo(GetDataFromRegister(bus, device, function, BUS_NUMBERS_REGISTER));
+			PrintIOBaseInfo(GetDataFromRegister(bus, device, function, IO_REGISTER));
+			PrintIOLimitInfo(GetDataFromRegister(bus, device, function, IO_REGISTER));			
+			PrintMemoryInfo(GetDataFromRegister(bus, device, function, MEMORY_REGISTER));
 		}
 		else
 		{
-			puts("\nNot a bridge\n");
-			PrintClassCodeInfo(bus, device, function);
 			ProcessBARs(bus, device, function);
-			
+			PrintExpansionROMInfo(GetDataFromRegister(bus, device, function, EXPANSION_ROM_REGISTER));
+			PrintCacheLineSizeInfo(GetDataFromRegister(bus, device, function, CACHE_LINE_SIZE_REGISTER));
 		}	
+		
+		PrintInterruptPinInfo(GetDataFromRegister(bus, device, function, INTERRPUT_PIN_REGISTER));
+		PrintInterruptLineInfo(GetDataFromRegister(bus, device, function, INTERRPUT_LINE_REGISTER));
 		
 		puts("-------------------");	
 	}
@@ -222,16 +323,9 @@ int main(int argc, char **argv)
 	unsigned short bus, device, function;
 	
 	for (bus = 0; bus < 256; bus++)
-	{
 		for (device = 0; device < 32; device++)
-		{
 			for (function = 0; function < 8; function++)
-			{
 				ProcessDevice(bus, device, function);
-			}
-			
-		}
-	}
 	
 	return 0;
 }
