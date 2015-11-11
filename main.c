@@ -282,7 +282,7 @@ void ProcessDevice(ushort bus, ushort device, ushort function)
 
 int main(int argc, char **argv)
 {
-	if (iopl(3) )
+	if (iopl(3))
 	{
 		printf("I/O Privilege level change error\n Try run under ROOT rights\n");
 		return 1;
