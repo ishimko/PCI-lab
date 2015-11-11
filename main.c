@@ -6,15 +6,13 @@
 #include "pci_constants.h"
 #include "pci.h"
 
-
-
 char *GetVendorName(int vendorID)
 {
 	int i;
 	for (i = 0; i < PCI_VENTABLE_LEN; i++)
 		if (PciVenTable[i].VendorId == vendorID)
 			return PciVenTable[i].VendorName;
-	return NULL;	
+	return NOT_FOUND;	
 }
 
 char *GetDeviceName(int vendorID, int deviceID)
@@ -24,7 +22,7 @@ char *GetDeviceName(int vendorID, int deviceID)
 		if (PciDevTable[i].VendorId == vendorID && PciDevTable[i].DeviceId == deviceID)
 			return PciDevTable[i].DeviceName;	
 	
-	return NULL;
+	return NOT_FOUND;
 }
 
 ulong GetDataFromRegister(ushort bus, ushort device, ushort function, ushort registerNumber)
@@ -47,21 +45,12 @@ byte GetHeaderType(ushort bus, ushort device, ushort function)
 
 
 void PrintDeviceMainInfo(ushort deviceID, ushort vendorID)
-{		
-	char *vendorName = GetVendorName(vendorID);
-	char *deviceName = GetDeviceName(vendorID, deviceID);
-	
+{
 	printf("Vendor ID: %x ", vendorID);
-	if (vendorName)
-		printf("%s\n", GetVendorName(vendorID));
-	else
-		puts("Not found.");
+	puts(GetVendorName(vendorID));
 		
 	printf("Device ID: %x ", deviceID);
-	if (deviceName)
-		printf("%s\n", GetDeviceName(vendorID, deviceID));
-	else
-		puts("Not found.");	
+	puts(GetDeviceName(vendorID, deviceID));	
 }
 
 ulong GetClassCode(ushort bus, ushort device, ushort function)
@@ -76,7 +65,7 @@ char *GetBaseClassDescription(byte baseClass)
 		if (baseClass == PciClassCodeTable[i].BaseClass)
 			return PciClassCodeTable[i].BaseDesc;
 	
-	return NULL;	
+	return NOT_FOUND;	
 }
 
 char *GetSubclassDescription(byte baseClass, byte subclass)
@@ -86,7 +75,7 @@ char *GetSubclassDescription(byte baseClass, byte subclass)
 		if (subclass == PciClassCodeTable[i].SubClass && baseClass == PciClassCodeTable[i].BaseClass)
 			return PciClassCodeTable[i].SubDesc;
 	
-	return NULL;	
+	return NOT_FOUND;	
 }
 
 char *GetProgrammingInterfaceDescription(byte baseClass, byte subclass, byte programmingInterface)
@@ -99,7 +88,7 @@ char *GetProgrammingInterfaceDescription(byte baseClass, byte subclass, byte pro
 			
 			return PciClassCodeTable[i].ProgDesc;
 	
-	return NULL;	
+	return NOT_FOUND;	
 }
 
 void PrintClassCodeInfo(ulong registerData)
@@ -112,27 +101,13 @@ void PrintClassCodeInfo(ulong registerData)
 	printf("Class Code: %#x\n", classCode);
 	
 	printf("Base class: %#x ", baseClass);
-	char *baseClassDescription = GetBaseClassDescription(baseClass);
-	if (baseClassDescription)
-		puts(baseClassDescription);
-	else
-		puts("Not found.");		
+	puts(GetBaseClassDescription(baseClass));
 	
 	printf("Subclass: %#x ", subclass);
-	char *subclassDescription = GetSubclassDescription(baseClass, subclass);
-	if (subclassDescription)
-		puts(baseClassDescription);
-	else
-		puts("Not found.");
-	
+	puts(GetSubclassDescription(baseClass, subclass));
 	
 	printf("Specific register level programming interface : %#x ", programmingInterface);
-	char *programmingInterfaceDescription = GetProgrammingInterfaceDescription(baseClass, subclass, programmingInterface);
-	if (programmingInterfaceDescription)
-		puts(programmingInterfaceDescription);
-	else
-		puts("Not found.");				
-	
+	puts(GetProgrammingInterfaceDescription(baseClass, subclass, programmingInterface));	
 }
 
 void PrintBARInfo(ulong registerInfo)
@@ -173,7 +148,7 @@ void ProcessBARs(ushort bus, ushort device, ushort function)
 		printf("Register %d:\n", i - 3);
 		ulong registerInfo = GetDataFromRegister(bus, device, function, i);
 		if (registerInfo)
-			PrintBARInfo(GetDataFromRegister(bus, device, function, i));
+			PrintBARInfo(registerInfo);
 		else
 			puts("Not used");
 	}
@@ -203,15 +178,11 @@ void PrintCacheLineSizeInfo(ulong registerInfo)
 		printf("%d\n\n", cacheLineSize);	
 }
 
-void PrintIOBaseInfo(ulong registerData)
+void PrintIOInfo(ulong registerData)
 {
 	byte IOBase = registerData & 255;
-	printf("I/O Base: %#x\n\n", IOBase);
-}
-
-void PrintIOLimitInfo(ulong registerData)
-{
 	byte IOLimit = (registerData >> 8) & 255;
+	printf("I/O Base: %#x\n", IOBase);	
 	printf("I/O Limit: %#x\n\n", IOLimit);
 }
 
@@ -224,10 +195,10 @@ void PrintMemoryInfo(ulong registerData)
 	printf("Memory Limit: %#x\n\n", memoryLimit);
 }
 
-void PrintInterruptPinInfo(ulong registerInfo)
+void PrintInterruptPinInfo(ulong registerData)
 {
 	printf("Interrupt Pin: ");
-	byte interruptPin = (registerInfo >> 8) & 255;
+	byte interruptPin = (registerData >> 8) & 255;
 	switch (interruptPin)
 	{
 		case 0:
@@ -251,23 +222,21 @@ void PrintInterruptPinInfo(ulong registerInfo)
 	puts("");
 }
 
-void PrintInterruptLineInfo(ulong registerInfo)
+void PrintInterruptLineInfo(ulong registerData)
 {
 	printf("Interrupt Line: ");
-	byte interruptLine = registerInfo & 255;
+	byte interruptLine = registerData & 255;
 	if (interruptLine == 255)
 		puts("unknown or not used\n");
 	else
 		printf("IRQ%u\n\n", interruptLine);	
 }
 
-void PrintBusNumbersInfo(ulong registerInfo)
+void PrintBusNumbersInfo(ulong registerData)
 {
-	printf("Primary Bus Number: %#x\n", registerInfo & 255);
-	printf("Secondary Bus Number: %#x\n", (registerInfo >> 8) & 255);
-	printf("Subordinate Bus Number: %#x\n\n", (registerInfo >> 16) & 255); 
-	 
-	
+	printf("\nPrimary Bus Number: %#x\n", registerData & 255);
+	printf("Secondary Bus Number: %#x\n", (registerData >> 8) & 255);
+	printf("Subordinate Bus Number: %#x\n\n", (registerData >> 16) & 255); 
 }
 
 void ProcessDevice(ushort bus, ushort device, ushort function)
@@ -282,7 +251,7 @@ void ProcessDevice(ushort bus, ushort device, ushort function)
 		printf("%x.%x.%x\n", bus, device, function);
 		PrintDeviceMainInfo(deviceID, vendorID);	
 		
-		byte isBridge = GetHeaderType(bus, device, function) >> 7;
+		byte isBridge = (GetHeaderType(bus, device, function) >> 7) & 1;
 		
 		if (isBridge)
 			puts("\nBridge\n");
@@ -294,8 +263,7 @@ void ProcessDevice(ushort bus, ushort device, ushort function)
 		if (isBridge)
 		{
 			PrintBusNumbersInfo(GetDataFromRegister(bus, device, function, BUS_NUMBERS_REGISTER));
-			PrintIOBaseInfo(GetDataFromRegister(bus, device, function, IO_REGISTER));
-			PrintIOLimitInfo(GetDataFromRegister(bus, device, function, IO_REGISTER));			
+			PrintIOInfo(GetDataFromRegister(bus, device, function, IO_REGISTER));
 			PrintMemoryInfo(GetDataFromRegister(bus, device, function, MEMORY_REGISTER));
 		}
 		else
@@ -326,6 +294,9 @@ int main(int argc, char **argv)
 		for (device = 0; device < 32; device++)
 			for (function = 0; function < 8; function++)
 				ProcessDevice(bus, device, function);
+	
+	puts("Press any key...");
+	getchar();
 	
 	return 0;
 }

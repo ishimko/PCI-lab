@@ -1,5 +1,7 @@
 typedef unsigned char byte;
 
+#define NOT_FOUND "Not found."
+
 #define CONTROL_PORT 0x0CF8
 #define INFO_PORT 0x0CFC
 
@@ -22,3 +24,5 @@ typedef unsigned char byte;
 #define BUS_NUMBERS_REGISTER 6
 #define IO_REGISTER 7
 #define MEMORY_REGISTER 8
+
+
