@@ -124,13 +124,13 @@ void PrintBARInfo(ulong registerInfo)
 			default:
 				break;
 		}
-		printf("Address: %#x\n", registerInfo >> 4);
+		printf("Address: %#x\n", (registerInfo >> 4) << 4);
 				
 	}
 	else
 	{
 		puts("I\\O");
-		printf("Address: %#x\n", registerInfo >> 2);
+		printf("Address: %#x\n", (registerInfo >> 2) << 2);
 	}
 }
 
