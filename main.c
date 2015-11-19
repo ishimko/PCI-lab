@@ -25,22 +25,16 @@ char *GetDeviceName(int vendorID, int deviceID)
 	return NOT_FOUND;
 }
 
-ulong GetDataFromRegister(ushort bus, ushort device, ushort function, ushort registerNumber)
+uint32 GetDataFromRegister(ushort bus, ushort device, ushort function, ushort registerNumber)
 {
-	ulong command = CONTROL_BIT | (bus << BUS_SHIFT) | (device << DEVICE_SHIFT) | (function << FUNCTION_SHIFT) | (registerNumber << REGISTER_SHIFT);
+	uint32 command = CONTROL_BIT | (bus << BUS_SHIFT) | (device << DEVICE_SHIFT) | (function << FUNCTION_SHIFT) | (registerNumber << REGISTER_SHIFT);
 	outl(command, CONTROL_PORT);
 	return inl(INFO_PORT);	
 }
 
-ulong GetIDs(ushort bus, ushort device, ushort function)
+byte GetHeaderType(uint32 registerData)
 {
-	return GetDataFromRegister(bus, device, function, 0);
-}
-
-byte GetHeaderType(ushort bus, ushort device, ushort function)
-{
-	ulong answer = GetDataFromRegister(bus, device, function, HEADER_TYPE_REGISTER);
-	return (answer >> 16) & 255;	
+	return (registerData >> 16) & 255;	
 }
 
 
@@ -86,9 +80,9 @@ char *GetProgrammingInterfaceDescription(byte baseClass, byte subclass, byte pro
 	return NOT_FOUND;	
 }
 
-void PrintClassCodeInfo(ulong registerData)
+void PrintClassCodeInfo(uint32 registerData)
 {	
-	ulong classCode = registerData >> 8;
+	uint32 classCode = registerData >> 8;
 	byte baseClass = (classCode >> 16) & 255;
 	byte subclass = (classCode >> 8) & 255;
 	byte programmingInterface = classCode & 255;
@@ -105,7 +99,7 @@ void PrintClassCodeInfo(ulong registerData)
 	puts(GetProgrammingInterfaceDescription(baseClass, subclass, programmingInterface));	
 }
 
-void PrintBARInfo(ulong registerInfo)
+void PrintBARInfo(uint32 registerInfo)
 {
 	if (!(registerInfo & 1))
 	{
@@ -141,7 +135,7 @@ void ProcessBARs(ushort bus, ushort device, ushort function)
 	for ( i = 4; i < 10; i++)
 	{
 		printf("Register %d:\n", i - 3);
-		ulong registerInfo = GetDataFromRegister(bus, device, function, i);
+		uint32 registerInfo = GetDataFromRegister(bus, device, function, i);
 		if (registerInfo)
 			PrintBARInfo(registerInfo);
 		else
@@ -150,20 +144,20 @@ void ProcessBARs(ushort bus, ushort device, ushort function)
 	
 }
 
-void PrintExpansionROMInfo(ulong registerInfo)
+void PrintExpansionROMInfo(uint32 registerInfo)
 {
 	printf("\nExpansion ROM base address: ");
 	if (registerInfo & 1)
 	{
 		puts("can be used");
-		printf("Address: %#x\n\n", registerInfo >> 11);	
+		printf("Address: %#x\n\n", (registerInfo >> 11) << 11);	
 	}
 	else
 		puts("can't be used\n");
 	
 }
 
-void PrintCacheLineSizeInfo(ulong registerInfo)
+void PrintCacheLineSizeInfo(uint32 registerInfo)
 {
 	byte cacheLineSize = registerInfo & 255;
 	printf("Cache Line Size: ");
@@ -173,7 +167,7 @@ void PrintCacheLineSizeInfo(ulong registerInfo)
 		printf("%d\n\n", cacheLineSize);	
 }
 
-void PrintIOInfo(ulong registerData)
+void PrintIOInfo(uint32 registerData)
 {
 	byte IOBase = registerData & 255;
 	byte IOLimit = (registerData >> 8) & 255;
@@ -181,7 +175,7 @@ void PrintIOInfo(ulong registerData)
 	printf("I/O Limit: %#x\n\n", IOLimit);
 }
 
-void PrintMemoryInfo(ulong registerData)
+void PrintMemoryInfo(uint32 registerData)
 {
 	ushort memoryBase = registerData && 65535;
 	ushort memoryLimit = registerData >> 16;
@@ -190,7 +184,7 @@ void PrintMemoryInfo(ulong registerData)
 	printf("Memory Limit: %#x\n\n", memoryLimit);
 }
 
-void PrintInterruptPinInfo(ulong registerData)
+void PrintInterruptPinInfo(uint32 registerData)
 {
 	printf("Interrupt Pin: ");
 	byte interruptPin = (registerData >> 8) & 255;
@@ -217,7 +211,7 @@ void PrintInterruptPinInfo(ulong registerData)
 	puts("");
 }
 
-void PrintInterruptLineInfo(ulong registerData)
+void PrintInterruptLineInfo(uint32 registerData)
 {
 	printf("Interrupt Line: ");
 	byte interruptLine = registerData & 255;
@@ -227,7 +221,7 @@ void PrintInterruptLineInfo(ulong registerData)
 		printf("IRQ%u\n\n", interruptLine);	
 }
 
-void PrintBusNumbersInfo(ulong registerData)
+void PrintBusNumbersInfo(uint32 registerData)
 {
 	printf("\nPrimary Bus Number: %#x\n", registerData & 255);
 	printf("Secondary Bus Number: %#x\n", (registerData >> 8) & 255);
@@ -237,16 +231,17 @@ void PrintBusNumbersInfo(ulong registerData)
 void ProcessDevice(ushort bus, ushort device, ushort function)
 {
 	
-	ulong IDs = GetIDs(bus, device, function);
+	uint32 IDsRegisterData = GetDataFromRegister(bus, device, function, IDS_REGISTER);
 	
-	if (IDs != 0xffffffff)
+	if (IDsRegisterData != NO_DEVICE)
 	{
-		ushort deviceID = IDs >> 16;
-		ushort vendorID = IDs & 65535;
+		ushort deviceID = IDsRegisterData >> 16;
+		ushort vendorID = IDsRegisterData & 65535;
+		
 		printf("%x.%x.%x\n", bus, device, function);
 		PrintDeviceMainInfo(deviceID, vendorID);	
 		
-		byte headerType = GetHeaderType(bus, device, function);
+		byte headerType = GetHeaderType(GetDataFromRegister(bus, device, function, HEADER_TYPE_REGISTER));
 		byte isBridge = headerType & 1;
 		byte hasMultipleFunctions = (headerType >> 7) & 1;
 		
