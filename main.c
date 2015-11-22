@@ -177,7 +177,7 @@ void PrintIOInfo(uint32 registerData)
 
 void PrintMemoryInfo(uint32 registerData)
 {
-	ushort memoryBase = registerData && 65535;
+	ushort memoryBase = registerData & 65535;
 	ushort memoryLimit = registerData >> 16;
 	
 	printf("Memory Base: %#x\n", memoryBase);
